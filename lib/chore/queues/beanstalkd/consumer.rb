@@ -18,8 +18,6 @@ module Chore
         # Sets a flag that instructs the publisher to reset the connection the next time it's used
         def self.reset_connection!
           @@reset_at = Time.now
-          @beanstalk.close
-          @beanstalk = nil
         end
 
         # Begins requesting messages from Beanstalk, which will invoke the +&handler+ over each message
@@ -66,11 +64,15 @@ module Chore
         end
 
         def transmit(command, opts = {})
-          @beanstalk.transmit_to_rand(command, opts)
+          beanstalk.transmit_to_rand(command, opts)
         end
 
         # Access to the configured Beanstalk connection object
         def beanstalk
+          if @@reset_at < Time.now && @beanstalk
+            @beanstalk.close
+            @beanstalk = nil
+          end
           @beanstalk ||= Beaneater::Pool.new(Chore.config.beanstalk_hosts)
         end
       end
